@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Career Radar v4 — Multi-Hub ATS & Knowledge Bank Command Center</title>
+  <style>
+    /* 1. Deep Slate / Midnight (Default Dark) */
+    :root, [data-theme="dark"] {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-secondary: #0f172a;
+      --border: #1f2937;
+      --border-focus: #3b82f6;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --emerald: #10b981;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --purple: #a855f7;
+      --th-bg: #0d1322;
+      --input-bg: #0b1120;
+      --btn-bg: #1f2937;
+      --btn-hover: #374151;
+      --card-hover: rgba(255, 255, 255, 0.03);
+      --link-color: #34d399;
+      --comp-color: #fde68a;
+      --badge-bg: #0f172a;
+      --badge-text: #e2e8f0;
+      --kpi-bg: #0f172a;
+    }
+
+    /* 2. Executive Light (Clean Paper & Subtle Slate) */
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --panel-secondary: #f1f5f9;
+      --border: #e2e8f0;
+      --border-focus: #2563eb;
+      --text: #0f172a;
+      --muted: #64748b;
+      --emerald: #059669;
+      --blue: #2563eb;
+      --amber: #d97706;
+      --purple: #7c3aed;
+      --th-bg: #f1f5f9;
+      --input-bg: #ffffff;
+      --btn-bg: #f8fafc;
+      --btn-hover: #e2e8f0;
+      --card-hover: rgba(0, 0, 0, 0.02);
+      --link-color: #047857;
+      --comp-color: #b45309;
+      --badge-bg: #f1f5f9;
+      --badge-text: #1e293b;
+      --kpi-bg: #f8fafc;
+    }
+
+    /* 3. Minimal Gray / Cool Modern */
+    [data-theme="minimal-gray"] {
+      --bg: #eaedf0;
+      --panel: #ffffff;
+      --panel-secondary: #f3f4f6;
+      --border: #d1d5db;
+      --border-focus: #0284c7;
+      --text: #111827;
+      --muted: #4b5563;
+      --emerald: #0d9488;
+      --blue: #0284c7;
+      --amber: #ea580c;
+      --purple: #6366f1;
+      --th-bg: #e2e8f0;
+      --input-bg: #f9fafb;
+      --btn-bg: #e5e7eb;
+      --btn-hover: #d1d5db;
+      --card-hover: rgba(0, 0, 0, 0.03);
+      --link-color: #0f766e;
+      --comp-color: #c2410c;
+      --badge-bg: #f3f4f6;
+      --badge-text: #1f2937;
+      --kpi-bg: #f3f4f6;
+    }
+
+    /* 4. Cyberpunk Neon (Vivid Retro-Futuristic) */
+    [data-theme="cyberpunk"] {
+      --bg: #06030e;
+      --panel: #110722;
+      --panel-secondary: #1a0833;
+      --border: rgba(255, 0, 127, 0.45);
+      --border-focus: #00f0ff;
+      --text: #00f0ff;
+      --muted: #f472b6;
+      --emerald: #00ff9d;
+      --blue: #00f0ff;
+      --amber: #ffe600;
+      --purple: #ff007f;
+      --th-bg: #1c0836;
+      --input-bg: #0b0217;
+      --btn-bg: #270d47;
+      --btn-hover: #3d146e;
+      --card-hover: rgba(255, 0, 127, 0.09);
+      --link-color: #00ff9d;
+      --comp-color: #ffe600;
+      --badge-bg: #1a0833;
+      --badge-text: #00f0ff;
+      --kpi-bg: #1a0833;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; transition: background 0.2s, color 0.2s; }
+    .container { max-width: 1560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .row-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+    .subtext { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button { cursor: pointer; border: 1px solid var(--border); background: var(--btn-bg); color: var(--text); padding: 8px 13px; border-radius: 8px; font-size: 13px; font-weight: 600; transition: 0.15s; }
+    button:hover { background: var(--btn-hover); }
+    button.primary { background: var(--emerald); border-color: var(--emerald); color: #042f2e; }
+    [data-theme="light"] button.primary, [data-theme="minimal-gray"] button.primary { color: #ffffff; }
+    button.city-btn { background: var(--btn-bg); border-color: var(--blue); color: var(--blue); }
+    input, select, textarea { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px; transition: border-color 0.15s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--border-focus); outline: none; }
+    
+    /* KPI Stats Bar */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 6px; }
+    .kpi-pill { background: var(--kpi-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .kpi-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    .kpi-num { font-size: 19px; font-weight: 800; color: var(--text); }
+
+    /* Polished Filter Control Panel */
+    .filter-panel { display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .filter-tier { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 170px; }
+    .filter-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .search-group { flex: 2.2; min-width: 260px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--th-bg); user-select: none; }
+    th.sortable { cursor: pointer; }
+    th.sortable:hover { color: var(--text); }
+    tr:hover { background: var(--card-hover); }
+    .company-name { font-size: 16px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+    .sub-brand { font-size: 11px; color: var(--muted); }
+    .badge { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; border: 1px solid var(--border); background: var(--badge-bg); color: var(--badge-text); }
+    
+    /* Tier styling */
+    .tier-1 { border-color: var(--purple); color: var(--purple); background: rgba(168, 85, 247, 0.12); }
+    .tier-2 { border-color: var(--blue); color: var(--blue); background: rgba(59, 130, 246, 0.12); }
+    
+    /* Strict track styling */
+    .track-nontech { border-color: var(--emerald); color: var(--emerald); background: rgba(16, 185, 129, 0.12); }
+    .track-pi { border-color: var(--amber); color: var(--amber); background: rgba(245, 158, 11, 0.12); }
+    .track-tpm { border-color: var(--purple); color: var(--purple); background: rgba(168, 85, 247, 0.12); }
+    
+    .chip-box { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; padding: 10px; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--border); }
+    .chip { background: var(--btn-bg); color: var(--text); padding: 4px 10px; border-radius: 999px; font-size: 12px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); }
+    .chip span { cursor: pointer; color: #ef4444; font-weight: bold; }
+    .hidden { display: none !important; }
+    a.job-link { color: var(--link-color); text-decoration: none; font-weight: 600; font-size: 14px; }
+    a.job-link:hover { text-decoration: underline; }
+
+    /* Posted timestamp styling */
+    .posted-cell { display: flex; flex-direction: column; gap: 3px; min-width: 145px; }
+    .posted-time { font-weight: 700; font-size: 13px; color: var(--text); }
+    .exact-pill { display: inline-flex; align-items: center; gap: 4px; border-color: var(--emerald); color: var(--emerald); background: rgba(16, 185, 129, 0.12); font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+    .date-pill { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); font-size: 10px; padding: 2px 6px; border-radius: 4px; opacity: 0.8; }
+
+    /* Modal Overlay & Drawer */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+    .modal-content { width: 100%; max-width: 920px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Top Command Bar with Lookback & Theme Selectors -->
+    <div class="card row-between">
+      <div>
+        <h1>Career Radar v4: Direct ATS & Multi-Hub Command Center</h1>
+        <p id="telemetryText" class="subtext">Ready to scan direct ATS endpoints (Greenhouse, Lever, Ashby, Workday, Amazon) & LinkedIn/Indeed sweeps.</p>
+      </div>
+      <div class="btn-row">
+        <!-- Theme Toggle Dropdown -->
+        <select id="themeSelect" onchange="setTheme(this.value)" style="width: auto; font-weight: 600;">
+          <option value="dark">🌙 Deep Slate</option>
+          <option value="light">☀️ Executive Light</option>
+          <option value="minimal-gray">🪨 Minimal Gray</option>
+          <option value="cyberpunk">⚡ Cyberpunk Neon</option>
+        </select>
+
+        <select id="lookbackSelect" onchange="updateLookback()" style="width: auto; font-weight: 600;">
+          <option value="5">⚡ Sweep Window: 5 Hours</option>
+          <option value="10">⚡ Sweep Window: 10 Hours</option>
+          <option value="24">⏱ Sweep Window: 24 Hours</option>
+          <option value="48">⏱ Sweep Window: 48 Hours</option>
+          <option value="72">⏱ Sweep Window: 3 Days</option>
+          <option value="168">⏱ Sweep Window: 7 Days</option>
+          <option value="336">⏱ Sweep Window: 14 Days</option>
+        </select>
+        <button id="runAllBtn" class="primary" onclick="triggerRun('ALL')">▶ Scan All Hubs</button>
+        <button class="city-btn" style="border-color: var(--emerald); color: var(--emerald);" onclick="triggerRun('us_national')">⚡ All USA (National)</button>
+        <button class="city-btn" onclick="triggerRun('seattle_wa')">⚡ Seattle</button>
+        <button class="city-btn" onclick="triggerRun('denver_co')">⚡ Denver</button>
+        <button class="city-btn" onclick="triggerRun('portland_or')">⚡ Portland</button>
+        <button class="city-btn" onclick="triggerRun('austin_tx')">⚡ Austin</button>
+        <button onclick="togglePanel('visualSettings')">🎛 Keywords & Hubs</button>
+        <button onclick="togglePanel('kbDrawer')">🧠 Knowledge Bank</button>
+        <button onclick="exportCSV()">⬇ CSV</button>
+      </div>
+    </div>
+
+    <!-- Quick KPI Summary Strip -->
+    <div class="kpi-row">
+      <div class="kpi-pill">
+        <span class="kpi-title">Matching Roles</span>
+        <span id="kpiTotal" class="kpi-num">0</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-title">Posted Today</span>
+        <span id="kpiToday" class="kpi-num" style="color: var(--emerald);">0</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-title">Exact Time Known (AM/PM)</span>
+        <span id="kpiExact" class="kpi-num" style="color: var(--blue);">0</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-title">Saved Positions</span>
+        <span id="kpiSaved" class="kpi-num" style="color: var(--amber);">0</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="kpi-title">High Fit (≥ 80%)</span>
+        <span id="kpiHighFit" class="kpi-num" style="color: var(--purple);">0</span>
+      </div>
+    </div>
+
+    <!-- Visual No-Code Keyword, Track & Hub Manager -->
+    <div id="visualSettings" class="card hidden">
+      <div class="row-between" style="margin-bottom: 12px;">
+        <strong>No-Code Keyword, City Hub & Track Controls</strong>
+        <button class="primary" onclick="saveVisualSettings()">💾 Save Configuration</button>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+          <label class="subtext"><strong>Target Role Keywords</strong> (Click × to remove, or type & press Add)</label>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <input id="newRoleKw" type="text" placeholder="e.g., Business Architecture, Six Sigma..." />
+            <button onclick="addChip('role_keywords', 'newRoleKw')">+ Add</button>
+          </div>
+          <div id="roleChips" class="chip-box"></div>
+        </div>
+        <div>
+          <label class="subtext"><strong>Negative Exclusion Keywords</strong> (Roles containing these are blocked)</label>
+          <div style="display: flex; gap: 6px; margin-top: 6px;">
+            <input id="newExKw" type="text" placeholder="e.g., Clearance, Retail, Intern..." />
+            <button onclick="addChip('exclude_keywords', 'newExKw')">+ Add</button>
+          </div>
+          <div id="excludeChips" class="chip-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Personal Knowledge Bank Drawer -->
+    <div id="kbDrawer" class="card hidden">
+      <div class="row-between" style="margin-bottom: 8px;">
+        <div>
+          <strong>Personal Knowledge Bank & Experience Matcher</strong>
+          <p class="subtext">Paste your resume bullets, STAR stories, methodologies (Lean Six Sigma, PMO, Process Improvement), and achievements. Every scraped job is scored against this text.</p>
+        </div>
+        <button class="primary" onclick="saveVisualSettings()">💾 Save Knowledge Bank</button>
+      </div>
+      <textarea id="kbTextarea" rows="7" style="width: 100%; margin-top: 6px;"></textarea>
+    </div>
+
+    <!-- Revamped Filter Bar (Never gets lost!) -->
+    <div class="filter-panel">
+      <!-- Tier 1: Search, Sort & Recency -->
+      <div class="filter-tier">
+        <div class="filter-group search-group">
+          <label>🔍 Live Search</label>
+          <input id="fSearch" type="text" placeholder="Search company (Apple, Meta, Amazon, Stripe), title, skill..." oninput="render()" />
+        </div>
+        
+        <div class="filter-group">
+          <label>↕ Sort Order</label>
+          <select id="fSort" onchange="render()">
+            <option value="posted_recent">🕒 Most Recent First (Newest)</option>
+            <option value="posted_oldest">🕒 Oldest First</option>
+            <option value="score_high">🎯 Match Fit (High → Low)</option>
+            <option value="salary_high">💰 Base Salary (High → Low)</option>
+            <option value="company_az">🏢 Company Name (A → Z)</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>📅 Posted When</label>
+          <select id="fPosted" onchange="render()">
+            <option value="ALL">All Postings</option>
+            <option value="5H">⚡ Past 5 Hours</option>
+            <option value="10H">⚡ Past 10 Hours</option>
+            <option value="24H">⏱ Past 24 Hours</option>
+            <option value="TODAY">📅 Posted Today (Calendar)</option>
+            <option value="48H">⏱ Past 48 Hours</option>
+            <option value="EXACT_ONLY">⚡ Exact Time Known Only</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>🌐 ATS / Platform</label>
+          <select id="fATS" onchange="render()">
+            <option value="ALL">All ATS & Platforms</option>
+            <option value="Greenhouse">Greenhouse Direct</option>
+            <option value="Lever">Lever Direct</option>
+            <option value="Ashby">Ashby Direct</option>
+            <option value="Workday">Workday Direct</option>
+            <option value="Amazon">Amazon Direct</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Indeed">Indeed</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="max-width: 150px;">
+          <label>Status</label>
+          <select id="fStatus" onchange="render()">
+            <option value="ACTIVE">New & Saved</option>
+            <option value="SAVED">⭐ Saved Only</option>
+            <option value="APPLIED">✓ Applied Only</option>
+            <option value="ALL">Show All</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tier 2: Category, Metro, Tier & Reset -->
+      <div class="filter-tier">
+        <div class="filter-group">
+          <label>Track Specialization</label>
+          <select id="fTrack" onchange="render()">
+            <option value="ALL">All 3 Tracks</option>
+            <option value="Non-Tech / Business PM">🟢 Non-Tech / Business PM</option>
+            <option value="Process Improvement & Ops">🟠 Process Improvement & Ops</option>
+            <option value="Technical PM (TPM)">🟣 Technical PM (TPM)</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Target Hub</label>
+          <select id="fCity" onchange="render()">
+            <option value="ALL">All Hubs & National Sweep</option>
+            <option value="us_national">⚡ All USA (National Sweep)</option>
+            <option value="seattle_wa">Seattle / Bellevue, WA</option>
+            <option value="denver_co">Denver / Boulder, CO</option>
+            <option value="portland_or">Portland / Beaverton, OR</option>
+            <option value="austin_tx">Austin / Round Rock, TX</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Company Tier</label>
+          <select id="fTier" onchange="render()">
+            <option value="ALL">All Tiers</option>
+            <option value="Tier 1">Tier 1: FAANG / Big Tech</option>
+            <option value="Tier 2">Tier 2: Public Tech Leaders</option>
+            <option value="Tier 3">Tier 3: Unicorns & High-Growth</option>
+            <option value="Tier 4">Tier 4: Enterprise & Retail</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Company</label>
+          <select id="fCompany" onchange="render()">
+            <option value="ALL">All Companies</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="max-width: 140px; justify-content: flex-end;">
+          <label>&nbsp;</label>
+          <button onclick="resetFilters()" style="padding: 7px 12px;">Reset Filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Table with Dedicated Posted Column -->
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" onclick="setSort('posted_recent')">When Posted ▾</th>
+            <th class="sortable" onclick="setSort('score_high')">Fit Score</th>
+            <th>Hub</th>
+            <th class="sortable" onclick="setSort('company_az')">Company</th>
+            <th>Tier</th>
+            <th>Strict Role Track</th>
+            <th>Role Title & Alignment</th>
+            <th class="sortable" onclick="setSort('salary_high')">Compensation</th>
+            <th>Location</th>
+            <th>ATS / Platform</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let state = { jobs: [], meta: {}, config: {} };
+
+    // Theme Management with LocalStorage Persistence
+    function setTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("careerRadarTheme", theme);
+      const sel = document.getElementById("themeSelect");
+      if (sel) sel.value = theme;
+    }
+
+    const savedTheme = localStorage.getItem("careerRadarTheme") || "dark";
+    setTheme(savedTheme);
+
+    async function loadState() {
+      const res = await fetch("/api/state");
+      state = await res.json();
+      document.getElementById("lookbackSelect").value = String(state.config.lookback_hours || 24);
+      document.getElementById("kbTextarea").value = state.config.knowledge_bank_text || "";
+      renderChips();
+      populateCompanyDropdown();
+      render();
+    }
+
+    function populateCompanyDropdown() {
+      const companies = [...new Set(state.jobs.map(j => j.company))].sort();
+      const sel = document.getElementById("fCompany");
+      const current = sel.value;
+      sel.innerHTML = `<option value="ALL">All Companies (${companies.length})</option>` +
+        companies.map(c => `<option value="${c}">${c}</option>`).join("");
+      if (companies.includes(current)) sel.value = current;
+    }
+
+    function renderChips() {
+      const rBox = document.getElementById("roleChips");
+      const eBox = document.getElementById("excludeChips");
+      rBox.innerHTML = (state.config.role_keywords || []).map((kw, i) =>
+        `<div class="chip">${kw} <span onclick="removeChip('role_keywords', ${i})">×</span></div>`
+      ).join("");
+      eBox.innerHTML = (state.config.exclude_keywords || []).map((kw, i) =>
+        `<div class="chip">${kw} <span onclick="removeChip('exclude_keywords', ${i})">×</span></div>`
+      ).join("");
+    }
+
+    function addChip(field, inputId) {
+      const val = document.getElementById(inputId).value.trim();
+      if (!val) return;
+      state.config[field] = [...(state.config[field] || []), val];
+      document.getElementById(inputId).value = "";
+      renderChips();
+    }
+
+    function removeChip(field, idx) {
+      state.config[field].splice(idx, 1);
+      renderChips();
+    }
+
+    async function updateLookback() {
+      state.config.lookback_hours = Number(document.getElementById("lookbackSelect").value);
+      await fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.config) });
+    }
+
+    async function saveVisualSettings() {
+      state.config.knowledge_bank_text = document.getElementById("kbTextarea").value;
+      state.config.lookback_hours = Number(document.getElementById("lookbackSelect").value);
+      await fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.config) });
+      document.getElementById("visualSettings").classList.add("hidden");
+      document.getElementById("kbDrawer").classList.add("hidden");
+      render();
+    }
+
+    function togglePanel(id) {
+      document.getElementById(id).classList.toggle("hidden");
+    }
+
+    function setSort(mode) {
+      const sel = document.getElementById("fSort");
+      if (sel) {
+        sel.value = mode;
+        render();
+      }
+    }
+
+    function resetFilters() {
+      document.getElementById("fSearch").value = "";
+      document.getElementById("fSort").value = "posted_recent";
+      document.getElementById("fPosted").value = "ALL";
+      document.getElementById("fATS").value = "ALL";
+      document.getElementById("fStatus").value = "ACTIVE";
+      document.getElementById("fTrack").value = "ALL";
+      document.getElementById("fCity").value = "ALL";
+      document.getElementById("fTier").value = "ALL";
+      document.getElementById("fCompany").value = "ALL";
+      render();
+    }
+
+    async function triggerRun(profileId) {
+      const btn = document.getElementById("runAllBtn");
+      const lookback = state.config.lookback_hours || 24;
+      btn.textContent = `⏳ Scanning ${profileId} (${lookback}h)...`;
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile_id: profileId, lookback_hours: lookback })
+        });
+        const updated = await res.json();
+        state.jobs = updated.jobs;
+        state.meta = updated.meta;
+      } catch (err) {
+        console.error("Run error:", err);
+      } finally {
+        btn.textContent = "▶ Scan All Hubs";
+        btn.disabled = false;
+        populateCompanyDropdown();
+        render();
+      }
+    }
+
+    async function setJobStatus(dedupKey, status) {
+      await fetch("/api/job/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dedup_key: dedupKey, status })
+      });
+      const job = state.jobs.find(j => j.dedup_key === dedupKey);
+      if (job) job.status = status;
+      render();
+    }
+
+    function render() {
+      const m = state.meta || {};
+      document.getElementById("telemetryText").textContent = m.last_run
+        ? `Last Snapshot: ${m.last_run} (${m.trigger} in ${m.duration_sec}s • ${m.new_count} new roles • ${m.total_scanned} scanned) | Daily 10:00 AM Cron Active`
+        : "Direct ATS endpoints (Greenhouse, Lever, Ashby, Workday, Amazon) & LinkedIn/Indeed sweeps active.";
+
+      const q = document.getElementById("fSearch").value.toLowerCase();
+      const sortMode = document.getElementById("fSort").value;
+      const postedMode = document.getElementById("fPosted").value;
+      const atsFilter = document.getElementById("fATS").value;
+      const track = document.getElementById("fTrack").value;
+      const city = document.getElementById("fCity").value;
+      const tier = document.getElementById("fTier").value;
+      const comp = document.getElementById("fCompany").value;
+      const statusMode = document.getElementById("fStatus").value;
+
+      let rows = state.jobs.filter(j => {
+        if (statusMode === "ACTIVE" && (j.status === "HIDDEN" || j.status === "APPLIED")) return false;
+        if (statusMode === "SAVED" && j.status !== "SAVED") return false;
+        if (statusMode === "APPLIED" && j.status !== "APPLIED") return false;
+        if (track !== "ALL" && j.role_track !== track) return false;
+        if (city !== "ALL" && j.profile_id !== city) return false;
+        if (tier !== "ALL" && !(j.tier || "").includes(tier)) return false;
+        if (comp !== "ALL" && j.company !== comp) return false;
+
+        if (atsFilter !== "ALL") {
+          if (!j.ats || !j.ats.toLowerCase().includes(atsFilter.toLowerCase())) return false;
+        }
+
+        const nowMs = Date.now();
+        const postMs = j.posted_at ? new Date(j.posted_at).getTime() : 0;
+        const diffHours = postMs ? (nowMs - postMs) / (1000 * 60 * 60) : 999999;
+
+        if (postedMode === "5H") {
+          if (diffHours > 5) return false;
+        } else if (postedMode === "10H") {
+          if (diffHours > 10) return false;
+        } else if (postedMode === "24H") {
+          if (diffHours > 24) return false;
+        } else if (postedMode === "TODAY") {
+          const d = (j.posted_display || "").toLowerCase();
+          if (!d.includes("today")) return false;
+        } else if (postedMode === "48H") {
+          if (diffHours > 48 && !(j.posted_display || "").toLowerCase().includes("today") && !(j.posted_display || "").toLowerCase().includes("yesterday")) return false;
+        } else if (postedMode === "EXACT_ONLY") {
+          if (!j.has_exact_time) return false;
+        }
+
+        if (q && !(`${j.company} ${j.sub_brand} ${j.title} ${j.location} ${j.matched_skills}`.toLowerCase().includes(q))) return false;
+        return true;
+      });
+
+      // Sorting
+      rows.sort((a, b) => {
+        if (sortMode === "posted_recent") {
+          const aTime = a.posted_at || a.first_seen || "";
+          const bTime = b.posted_at || b.first_seen || "";
+          return bTime.localeCompare(aTime);
+        } else if (sortMode === "posted_oldest") {
+          const aTime = a.posted_at || a.first_seen || "";
+          const bTime = b.posted_at || b.first_seen || "";
+          return aTime.localeCompare(bTime);
+        } else if (sortMode === "score_high") {
+          return (b.fit_score || 0) - (a.fit_score || 0);
+        } else if (sortMode === "salary_high") {
+          return (b.salary_max || b.salary_min || 0) - (a.salary_max || a.salary_min || 0);
+        } else if (sortMode === "company_az") {
+          return (a.company || "").localeCompare(b.company || "");
+        }
+        return 0;
+      });
+
+      // Update KPIs
+      document.getElementById("kpiTotal").textContent = rows.length;
+      document.getElementById("kpiToday").textContent = rows.filter(j => (j.posted_display || "").toLowerCase().includes("today")).length;
+      document.getElementById("kpiExact").textContent = rows.filter(j => j.has_exact_time).length;
+      document.getElementById("kpiSaved").textContent = state.jobs.filter(j => j.status === "SAVED").length;
+      document.getElementById("kpiHighFit").textContent = rows.filter(j => (j.fit_score || 0) >= 80).length;
+
+      document.getElementById("jobsBody").innerHTML = rows.map(j => {
+        const tClass = j.role_track === "Non-Tech / Business PM" ? "track-nontech"
+                     : j.role_track === "Process Improvement & Ops" ? "track-pi" : "track-tpm";
+        const tierClass = (j.tier || "").includes("Tier 1") ? "tier-1" : (j.tier || "").includes("Tier 2") ? "tier-2" : "";
+        
+        const postedHtml = `
+          <div class="posted-cell">
+            <div class="posted-time">${j.posted_display || "Today"}</div>
+            <div>
+              ${j.has_exact_time 
+                ? `<span class="exact-pill">⚡ Exact Time</span>`
+                : `<span class="date-pill">📅 Date Level</span>`
+              }
+            </div>
+          </div>
+        `;
+
+        return `
+          <tr>
+            <td>${postedHtml}</td>
+            <td><span class="badge track-nontech">${j.fit_score}%</span></td>
+            <td><span class="badge">${(j.profile_name || "").split(",")[0].split("/")[0].trim()}</span></td>
+            <td>
+              <div class="company-name">${j.company}</div>
+              ${j.sub_brand ? `<div class="sub-brand">${j.sub_brand}</div>` : ""}
+            </td>
+            <td><span class="badge ${tierClass}">${j.tier}</span></td>
+            <td><span class="badge ${tClass}">${j.role_track}</span></td>
+            <td>
+              <a class="job-link" href="${j.url}" target="_blank" rel="noopener noreferrer">${j.title} ↗</a>
+              <div class="subtext">Matched: ${j.matched_skills || "Core Profile"} • ${j.seniority}</div>
+            </td>
+            <td style="font-weight: 600; color: var(--comp-color);">${j.salary_display}</td>
+            <td>${j.location}</td>
+            <td><span class="badge">${j.ats}</span></td>
+            <td>
+              <div class="btn-row">
+                <button class="city-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openTailorModal('${j.dedup_key}')" title="Tailor Resume & STAR Bullets for Gemini">✨ Tailor</button>
+                <button onclick="setJobStatus('${j.dedup_key}', 'SAVED')" title="Save Job">${j.status === "SAVED" ? "★" : "☆"}</button>
+                <button onclick="setJobStatus('${j.dedup_key}', 'APPLIED')" title="Mark Applied">${j.status === "APPLIED" ? "✓" : "Apply"}</button>
+                <button onclick="setJobStatus('${j.dedup_key}', 'HIDDEN')" title="Hide Job">✕</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function exportCSV() {
+      const headers = ["WhenPosted", "ExactTime", "FitScore", "Hub", "Company", "SubBrand", "Tier", "StrictTrack", "Title", "MatchedSkills", "Compensation", "Location", "ATS", "DirectURL"];
+      const rows = state.jobs.map(j => [j.posted_display, j.has_exact_time ? "YES" : "NO", j.fit_score, j.profile_name, j.company, j.sub_brand, j.tier, j.role_track, j.title, j.matched_skills, j.salary_display, j.location, j.ats, j.url]);
+      const csv = "data:text/csv;charset=utf-8," + [headers, ...rows].map(r => r.map(c => `"${String(c || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+      const a = document.createElement("a");
+      a.href = encodeURI(csv);
+      a.download = `career_radar_v4_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    }
+
+    async function openTailorModal(dedupKey) {
+      const modal = document.getElementById("tailorModal");
+      const job = state.jobs.find(j => j.dedup_key === dedupKey);
+      if (!job) return;
+
+      document.getElementById("tailorModalTitle").textContent = `✨ Tailor Resume: ${job.title} @ ${job.company}`;
+      document.getElementById("tailorModalSubtitle").textContent = `${job.location} • ${job.role_track} • Fit Score: ${job.fit_score}%`;
+      document.getElementById("tailorPromptText").value = "";
+      document.getElementById("tailorLoading").classList.remove("hidden");
+      document.getElementById("tailorBody").classList.add("hidden");
+      modal.classList.remove("hidden");
+
+      try {
+        const res = await fetch("/api/tailor-prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dedup_key: dedupKey })
+        });
+        const data = await res.json();
+        document.getElementById("tailorPromptText").value = data.prompt || "Could not generate prompt.";
+      } catch (err) {
+        document.getElementById("tailorPromptText").value = "Error generating prompt: " + err;
+      } finally {
+        document.getElementById("tailorLoading").classList.add("hidden");
+        document.getElementById("tailorBody").classList.remove("hidden");
+      }
+    }
+
+    function closeTailorModal() {
+      document.getElementById("tailorModal").classList.add("hidden");
+    }
+
+    function copyTailorPrompt() {
+      const text = document.getElementById("tailorPromptText").value;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById("copyPromptBtn");
+        const orig = btn.textContent;
+        btn.textContent = "✓ Copied to Clipboard!";
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      });
+    }
+
+    loadState();
+  </script>
+
+  <!-- Gemini Resume Tailor Modal -->
+  <div id="tailorModal" class="modal-overlay hidden" onclick="if(event.target===this)closeTailorModal()">
+    <div class="modal-content card">
+      <div class="row-between" style="border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px;">
+        <div>
+          <h2 id="tailorModalTitle" style="font-size: 16px;">✨ Tailor Resume for Gemini</h2>
+          <p id="tailorModalSubtitle" class="subtext">Custom prompt combining your Knowledge Bank + Job Description</p>
+        </div>
+        <div class="btn-row">
+          <button id="copyPromptBtn" class="primary" onclick="copyTailorPrompt()">📋 Copy Prompt for Gemini</button>
+          <button onclick="closeTailorModal()">✕ Close</button>
+        </div>
+      </div>
+      <div id="tailorLoading" class="subtext hidden" style="padding: 24px; text-align: center;">⏳ Generating custom STAR prompt with Knowledge Bank stories...</div>
+      <div id="tailorBody" style="display: flex; flex-direction: column; gap: 10px;">
+        <textarea id="tailorPromptText" rows="18" style="width: 100%; font-family: monospace; font-size: 12px; line-height: 1.4; resize: vertical;" readonly></textarea>
+        <div class="subtext">💡 <strong>Next Step:</strong> Click "Copy Prompt for Gemini", paste into Google Gemini (gemini.google.com), and review the customized resume bullets and cover letter hooks.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

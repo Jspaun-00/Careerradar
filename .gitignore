@@ -1,0 +1,29 @@
+# Environments & Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Local Databases & State
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# OS & Editor
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+Thumbs.db
+.vscode/
+.idea/
+
+# Local scratch & logs
+*.log
+scratch/

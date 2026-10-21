@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import re
+import html
 import urllib.parse
 import bs4
 from datetime import datetime, timezone
@@ -23,6 +24,62 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*"
 }
+
+def clean_and_prune_description(raw: str) -> str:
+    """Transforms raw HTML / escaped text into clean, structured plain text
+    and strictly prunes all boilerplate, salary, benefits, and EEOC disclaimers
+    occurring after requirements/preferred qualifications."""
+    if not raw:
+        return ""
+    text = str(raw)
+    for _ in range(3):
+        decoded = html.unescape(text)
+        if decoded == text:
+            break
+        text = decoded
+
+    # Convert HTML linebreaks and list items to structured plain text
+    text = re.sub(r'(?i)<br\s*/?>', '\n', text)
+    text = re.sub(r'(?i)</?(p|div|h[1-6]|tr|table|ul|ol)[^>]*>', '\n', text)
+    text = re.sub(r'(?i)<li[^>]*>', '\n• ', text)
+    text = re.sub(r'(?i)</li>', '\n', text)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = text.replace('\xa0', ' ').replace('\r', '')
+
+    lines = [l.strip() for l in text.splitlines()]
+    cleaned_lines = []
+    prev_blank = False
+    for l in lines:
+        if not l:
+            if not prev_blank:
+                cleaned_lines.append('')
+                prev_blank = True
+        else:
+            cleaned_lines.append(l)
+            prev_blank = False
+    text = '\n'.join(cleaned_lines).strip()
+
+    cutoff_patterns = [
+        r'(?i)\b(compensation\s+range|salary\s+range|base\s+pay|pay\s+range|compensation\s*:|expected\s+salary)\b',
+        r'(?i)\b(benefits\s+include|amazon\s+also\s+offers\s+comprehensive\s+benefits|we\s+offer\s+competitive\s+compensation\s+and\s+benefits|benefits\s+package)\b',
+        r'(?i)\b(our\s+inclusive\s+culture\s+empowers|workplace\s+accommodation|equal\s+opportunity\s+employer|eeo\s+statement|affirmative\s+action)\b',
+        r'(?i)\b(amazon\s+is\s+an\s+equal\s+opportunity|amazon\s+is\s+committed\s+to\s+a\s+diverse|anduril\s+is\s+an\s+equal\s+opportunity)\b',
+        r'(?i)\b(privacy\s+policy|third-party\s+service\s+provider|risk-intelligence\s+services|background\s+check)\b',
+        r'(?i)\bUSA,\s+[A-Z]{2},\s+[A-Za-z\s]+-\s*[\d,]+\.?\d*\s*-\s*[\d,]+\.?\d*\s*USD\b',
+        r'(?i)\bannual\s+salary\s+range\b',
+        r'(?i)\bpay\s+is\s+based\s+on\b'
+    ]
+
+    earliest_idx = len(text)
+    for pat in cutoff_patterns:
+        m = re.search(pat, text)
+        if m and m.start() > 150 and m.start() < earliest_idx:
+            earliest_idx = m.start()
+
+    if earliest_idx < len(text):
+        text = text[:earliest_idx].strip()
+
+    return text
 
 def matches_role_keywords(title: str, config: dict) -> bool:
     if not title:
@@ -55,7 +112,7 @@ async def scrape_amazon_direct(client: httpx.AsyncClient, profile: dict, config:
                             "location": loc,
                             "url": f"https://www.amazon.jobs{j.get('job_path', '')}",
                             "ats": "Amazon Direct",
-                            "description": f"{j.get('description_short', '')} {j.get('basic_qualifications', '')}",
+                            "description": clean_and_prune_description(f"{j.get('description', '')}\n\nBASIC QUALIFICATIONS:\n{j.get('basic_qualifications', '')}\n\nPREFERRED QUALIFICATIONS:\n{j.get('preferred_qualifications', '')}".strip()),
                             "posted_raw": raw_date
                         })
         except Exception:
@@ -96,7 +153,7 @@ async def scrape_eightfold_direct(client: httpx.AsyncClient, ef_site: dict, prof
                             "location": loc_str,
                             "url": canonical_url,
                             "ats": f"{ef_site['name']} Direct (Eightfold)",
-                            "description": pos.get("job_description", ""),
+                            "description": clean_and_prune_description(pos.get("job_description", "")),
                             "posted_raw": raw_date
                         })
         except Exception:
@@ -146,7 +203,7 @@ async def scrape_workday(client: httpx.AsyncClient, wd: dict, profiles: list, co
                                 "location": loc,
                                 "url": f"https://{wd['host']}/en-US/{wd['site']}{j.get('externalPath', '')}",
                                 "ats": "Workday Direct",
-                                "description": " ".join(j.get("bulletFields", []) or []),
+                                "description": clean_and_prune_description(" ".join(j.get("bulletFields", []) or [])),
                                 "posted_raw": j.get("postedOn") or "Posted Today"
                             })
         except Exception:
@@ -176,7 +233,7 @@ async def scrape_greenhouse(client: httpx.AsyncClient, slug: str, profiles: list
                         "location": loc,
                         "url": j.get("absolute_url"),
                         "ats": "Greenhouse Direct",
-                        "description": j.get("content", ""),
+                        "description": clean_and_prune_description(j.get("content", "")),
                         "posted_raw": raw_date
                     })
         return jobs
@@ -197,6 +254,9 @@ async def scrape_lever(client: httpx.AsyncClient, slug: str, profiles: list, con
             loc = j.get("categories", {}).get("location", "")
             for p in profiles:
                 if strict_location_match(loc, p, config.get("include_remote_us", False)):
+                    lever_parts = [j.get("description", "") or j.get("descriptionPlain", "")]
+                    for lst in j.get("lists", []):
+                        lever_parts.append(f"{lst.get('text', '')}:\n{lst.get('content', '')}")
                     jobs.append({
                         "profile_id": p["id"],
                         "profile_name": p["name"],
@@ -205,7 +265,7 @@ async def scrape_lever(client: httpx.AsyncClient, slug: str, profiles: list, con
                         "location": loc,
                         "url": j.get("hostedUrl"),
                         "ats": "Lever Direct",
-                        "description": j.get("descriptionPlain", ""),
+                        "description": clean_and_prune_description("\n\n".join(lever_parts)),
                         "salary_min": j.get("salaryRange", {}).get("min"),
                         "salary_max": j.get("salaryRange", {}).get("max"),
                         "posted_raw": j.get("createdAt")
@@ -238,7 +298,7 @@ async def scrape_ashby(client: httpx.AsyncClient, slug: str, profiles: list, con
                         "location": loc or p["primary_location"],
                         "url": j.get("jobUrl") or j.get("applyUrl"),
                         "ats": "Ashby Direct",
-                        "description": j.get("descriptionPlain", "") or j.get("descriptionHtml", ""),
+                        "description": clean_and_prune_description(j.get("descriptionPlain", "") or j.get("descriptionHtml", "")),
                         "posted_raw": j.get("publishedAt")
                     })
         return jobs
@@ -296,7 +356,9 @@ def _run_hub_jobspy_sweep(profile: dict, config: dict):
                 distance=35 if profile.get("id") != "us_national" else 100,
                 results_wanted=results_per_query,
                 hours_old=lookback,
-                country_indeed="USA"
+                country_indeed="USA",
+                fetch_description=True,
+                linkedin_fetch_description=True
             )
             for _, row in df.iterrows():
                 title = str(row.get("title", ""))
@@ -330,7 +392,7 @@ def _run_hub_jobspy_sweep(profile: dict, config: dict):
                         "location": loc,
                         "url": str(row.get("job_url_direct") or row.get("job_url")),
                         "ats": ats_label,
-                        "description": str(row.get("description", "")),
+                        "description": clean_and_prune_description(str(row.get("description", ""))),
                         "salary_min": row.get("min_amount"),
                         "salary_max": row.get("max_amount"),
                         "posted_raw": posted_val

@@ -55,6 +55,10 @@ def init_db():
             conn.execute("ALTER TABLE jobs ADD COLUMN has_exact_time INTEGER DEFAULT 0")
         if "description" not in existing_cols:
             conn.execute("ALTER TABLE jobs ADD COLUMN description TEXT")
+        if "resume_catered" not in existing_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN resume_catered INTEGER DEFAULT 0")
+        if "resume_catered_at" not in existing_cols:
+            conn.execute("ALTER TABLE jobs ADD COLUMN resume_catered_at TEXT")
 
         # Purge any Glassdoor entries as requested
         conn.execute("DELETE FROM jobs WHERE ats LIKE '%glassdoor%' OR ats LIKE '%Glassdoor%' OR company LIKE '%Glassdoor%'")
@@ -148,3 +152,8 @@ def list_jobs() -> list:
 def update_job_status(dedup_key: str, status: str):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("UPDATE jobs SET status = ? WHERE dedup_key = ?", (status, dedup_key))
+
+def update_resume_catered(dedup_key: str):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("UPDATE jobs SET resume_catered = 1, resume_catered_at = ? WHERE dedup_key = ?", (now_iso, dedup_key))

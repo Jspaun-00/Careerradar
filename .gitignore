@@ -8,6 +8,9 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.env
+.env.local
+.env.*.local
 
 # Local Databases & State
 *.db

@@ -256,6 +256,24 @@
           <div id="excludeChips" class="chip-box"></div>
         </div>
       </div>
+      <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+          <label class="subtext"><strong>Candidate Name</strong> (Used for resume file naming)</label>
+          <input id="candidateNameInput" type="text" placeholder="e.g. Jane Doe" style="margin-top: 6px; width: 100%;" />
+        </div>
+        <div>
+          <label class="subtext"><strong>Custom Gemini Gem URL</strong> (Automated resume builder)</label>
+          <input id="geminiGemUrlInput" type="text" placeholder="https://gemini.google.com/gem/..." style="margin-top: 6px; width: 100%;" />
+        </div>
+      </div>
+      <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px;">
+        <label class="subtext"><strong>Google Docs PDF Webhook URL</strong> (Apps Script Web App <code>https://script.google.com/macros/s/.../exec</code>)</label>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <input id="webhookUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="flex: 1;" />
+          <button class="primary" onclick="saveVisualSettings()">💾 Save Settings</button>
+        </div>
+        <p class="subtext" style="font-size: 11px; margin-top: 4px; color: var(--text-muted);">When you click <strong>✨ Cater Resume</strong>, Career Radar sends Gemini's tailored resume Markdown directly to this Webhook to format and compile your executive PDF.</p>
+      </div>
     </div>
 
     <!-- Personal Knowledge Bank Drawer -->
@@ -419,6 +437,18 @@
       state = await res.json();
       document.getElementById("lookbackSelect").value = String(state.config.lookback_hours || 24);
       document.getElementById("kbTextarea").value = state.config.knowledge_bank_text || "";
+      const webhookInput = document.getElementById("webhookUrlInput");
+      if (webhookInput) {
+        webhookInput.value = state.config.apps_script_webhook_url || "";
+      }
+      const candidateInput = document.getElementById("candidateNameInput");
+      if (candidateInput) {
+        candidateInput.value = state.config.candidate_name || "";
+      }
+      const geminiInput = document.getElementById("geminiGemUrlInput");
+      if (geminiInput) {
+        geminiInput.value = state.config.gemini_gem_url || "";
+      }
       renderChips();
       populateCompanyDropdown();
       render();
@@ -465,6 +495,18 @@
     async function saveVisualSettings() {
       state.config.knowledge_bank_text = document.getElementById("kbTextarea").value;
       state.config.lookback_hours = Number(document.getElementById("lookbackSelect").value);
+      const webhookInput = document.getElementById("webhookUrlInput");
+      if (webhookInput) {
+        state.config.apps_script_webhook_url = webhookInput.value.trim();
+      }
+      const candidateInput = document.getElementById("candidateNameInput");
+      if (candidateInput) {
+        state.config.candidate_name = candidateInput.value.trim();
+      }
+      const geminiInput = document.getElementById("geminiGemUrlInput");
+      if (geminiInput) {
+        state.config.gemini_gem_url = geminiInput.value.trim();
+      }
       await fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.config) });
       document.getElementById("visualSettings").classList.add("hidden");
       document.getElementById("kbDrawer").classList.add("hidden");
@@ -647,7 +689,10 @@
             <td><span class="badge">${j.ats}</span></td>
             <td>
               <div class="btn-row">
-                <button class="city-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openTailorModal('${j.dedup_key}')" title="Tailor Resume & STAR Bullets for Gemini">✨ Tailor</button>
+                <button id="caterBtn_${j.dedup_key}" class="city-btn" style="padding: 4px 8px; font-size: 11px; ${j.resume_catered ? 'border-color: var(--emerald); color: var(--emerald);' : 'border-color: #a855f7; color: #a855f7;'}" onclick="triggerCaterResume('${j.dedup_key}')" title="Automate Gemini Resume and Google Docs PDF compilation">
+                  ${j.resume_catered ? '✅ Catered (Re-run)' : '✨ Cater Resume'}
+                </button>
+                <button class="city-btn" style="padding: 4px 8px; font-size: 11px;" onclick="openTailorModal('${j.dedup_key}')" title="Tailor Resume & STAR Bullets for Gemini">Prompt</button>
                 <button onclick="setJobStatus('${j.dedup_key}', 'SAVED')" title="Save Job">${j.status === "SAVED" ? "★" : "☆"}</button>
                 <button onclick="setJobStatus('${j.dedup_key}', 'APPLIED')" title="Mark Applied">${j.status === "APPLIED" ? "✓" : "Apply"}</button>
                 <button onclick="setJobStatus('${j.dedup_key}', 'HIDDEN')" title="Hide Job">✕</button>
@@ -709,6 +754,286 @@
         setTimeout(() => { btn.textContent = orig; }, 2000);
       });
     }
+
+    // --- AUTOMATED "CATER RESUME" PIPELINE VIA CHROME EXTENSION & GOOGLE DOCS WEBHOOK ---
+    const caterTimers = {};
+
+    function formatElapsed(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, "0");
+      const s = String(sec % 60).padStart(2, "0");
+      return `${m}:${s}s`;
+    }
+
+    function shortenJobTitle(company, title) {
+      if (!title) return "Program Manager";
+      let clean = title.replace(/\s*[\(\[].*?[\)\]]/g, ""); // strip parentheses like (L6), (Remote)
+      clean = clean.split(/[,|/\-–—]/)[0].trim(); // take primary title before commas, pipes, slashes, or dashes
+      clean = clean.replace(/\s+(III|II|IV|I)\b/gi, "");
+      clean = clean.replace(/\s+/g, " ").trim();
+      let compClean = (company || "").replace(/\s+(Industries|LLC|Inc\.?|Corp\.?|Corporation)/gi, "").trim();
+      if (compClean && !clean.toLowerCase().includes(compClean.toLowerCase())) {
+        clean = `${compClean} ${clean}`;
+      }
+      return clean.replace(/[^a-zA-Z0-9\s_-]/g, "").trim().substring(0, 45);
+    }
+
+    function pruneJobDescription(rawDesc) {
+      if (!rawDesc) return "";
+      let text = rawDesc;
+
+      // 1. Decode HTML entities multiple times (handles &lt;div&gt;, &amp;nbsp;, etc.)
+      const decodeEntities = (str) => {
+        const txt = document.createElement("textarea");
+        txt.innerHTML = str;
+        return txt.value;
+      };
+      for (let i = 0; i < 3; i++) {
+        const decoded = decodeEntities(text);
+        if (decoded === text) break;
+        text = decoded;
+      }
+
+      // 2. Convert HTML formatting to structured clean text
+      text = text.replace(/<br\s*[\/]?>/gi, "\n")
+                 .replace(/<\/(p|div|h[1-6]|tr|table|ul|ol)>/gi, "\n")
+                 .replace(/<li[^>]*>/gi, "\n• ")
+                 .replace(/<\/li>/gi, "\n")
+                 .replace(/<[^>]+>/g, "")
+                 .replace(/\u00a0/g, " ")
+                 .replace(/\r/g, "");
+
+      // Normalize line breaks & whitespace
+      const lines = text.split("\n").map(l => l.trim());
+      const cleanedLines = [];
+      let prevBlank = false;
+      for (const l of lines) {
+        if (!l) {
+          if (!prevBlank) {
+            cleanedLines.push("");
+            prevBlank = true;
+          }
+        } else {
+          cleanedLines.push(l);
+          prevBlank = false;
+        }
+      }
+      text = cleanedLines.join("\n").trim();
+
+      // 3. Strict cutoff markers: strip everything after requirements/preferred qualifications
+      const cutoffMarkers = [
+        "pay is based on",
+        "salary range",
+        "base pay",
+        "compensation range",
+        "benefits include",
+        "amazon also offers comprehensive benefits",
+        "our inclusive culture empowers",
+        "if you have a disability and need a workplace accommodation",
+        "equal opportunity employer",
+        "amazon is an equal opportunity",
+        "anduril is an equal opportunity",
+        "affirmative action",
+        "telecommuter policy",
+        "application deadline",
+        "background check",
+        "work authorization",
+        "privacy policy",
+        "third-party service provider",
+        "risk-intelligence services",
+        "report job"
+      ];
+
+      const lower = text.toLowerCase();
+      let earliestCutoff = text.length;
+
+      for (const marker of cutoffMarkers) {
+        const idx = lower.indexOf(marker);
+        if (idx !== -1 && idx > 200 && idx < earliestCutoff) {
+          earliestCutoff = idx;
+        }
+      }
+
+      if (earliestCutoff < text.length) {
+        text = text.substring(0, earliestCutoff).trim();
+      }
+
+      return text;
+    }
+
+    async function triggerCaterResume(dedupKey) {
+      const job = state.jobs.find(j => j.dedup_key === dedupKey);
+      if (!job) return;
+
+      const isExtensionActive = window.document.documentElement.getAttribute("data-career-radar-extension") === "active";
+      if (!isExtensionActive) {
+        alert("⚠️ 'Job Copilot for Gemini' Extension is not active on this page.\n\n1. Open chrome://extensions\n2. Click the 'Reload' (🔄) button on 'Job Copilot for Gemini'\n3. Refresh this dashboard page and try again!");
+        return;
+      }
+
+      let desc = job.description || "";
+      if (desc.length < 150) {
+        alert(`Note: Database description is only ${desc.length} chars. The extension will use this text or you can open the job link to grab full details.`);
+      }
+
+      const prunedDesc = pruneJobDescription(desc);
+
+      const btn = document.getElementById(`caterBtn_${dedupKey}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.style.borderColor = "#f59e0b";
+        btn.style.color = "#f59e0b";
+      }
+
+      if (caterTimers[dedupKey]) clearInterval(caterTimers[dedupKey].interval);
+      caterTimers[dedupKey] = {
+        seconds: 0,
+        interval: setInterval(() => {
+          caterTimers[dedupKey].seconds++;
+          const curBtn = document.getElementById(`caterBtn_${dedupKey}`);
+          if (curBtn && caterTimers[dedupKey].label) {
+            curBtn.textContent = `⏳ ${formatElapsed(caterTimers[dedupKey].seconds)} | ${caterTimers[dedupKey].label}`;
+          }
+        }, 1000),
+        label: "Opening Gem..."
+      };
+
+      const curBtn = document.getElementById(`caterBtn_${dedupKey}`);
+      if (curBtn) {
+        curBtn.textContent = `⏳ 00:00s | Opening Gem...`;
+      }
+
+      const conciseTitle = shortenJobTitle(job.company, job.title);
+
+      const geminiUrl = (appState.config && appState.config.gemini_gem_url) || "";
+
+      window.postMessage({
+        type: "CAREER_RADAR_CATER_RESUME",
+        payload: {
+          jobId: dedupKey,
+          jobTitle: conciseTitle,
+          rawTitle: job.title,
+          company: job.company,
+          jobUrl: job.url,
+          geminiUrl: geminiUrl,
+          description: prunedDesc
+        }
+      }, "*");
+    }
+
+    // Listen for extension events forwarded via board_bridge.js
+    window.addEventListener("message", async (event) => {
+      if (event.source !== window || !event.data) return;
+
+      const { type, payload } = event.data;
+
+      if (type === "CAREER_RADAR_STATUS_UPDATE") {
+        const { jobId, status, label } = payload || {};
+        if (jobId && caterTimers[jobId]) {
+          caterTimers[jobId].label = label || "Processing...";
+          const btn = document.getElementById(`caterBtn_${jobId}`);
+          if (btn) {
+            btn.textContent = `⏳ ${formatElapsed(caterTimers[jobId].seconds)} | ${caterTimers[jobId].label}`;
+          }
+        }
+      }
+
+      if (type === "CAREER_RADAR_ERROR") {
+        const { jobId, error } = payload || {};
+        if (jobId && caterTimers[jobId]) {
+          clearInterval(caterTimers[jobId].interval);
+          delete caterTimers[jobId];
+        }
+        const btn = document.getElementById(`caterBtn_${jobId}`);
+        if (btn) {
+          btn.disabled = false;
+          btn.style.borderColor = "#ef4444";
+          btn.style.color = "#ef4444";
+          btn.textContent = "❌ Error (Retry)";
+        }
+        alert(`Gemini Automation Error:\n${error}`);
+      }
+
+      if (type === "CAREER_RADAR_MARKDOWN_READY") {
+        const { jobId, jobTitle, markdown } = payload || {};
+        const job = state.jobs.find(j => j.dedup_key === jobId);
+        const resolvedTitle = jobTitle || (job ? job.title : "Role");
+
+        if (caterTimers[jobId]) {
+          caterTimers[jobId].label = "Compiling PDF via Google Doc...";
+          const btn = document.getElementById(`caterBtn_${jobId}`);
+          if (btn) {
+            btn.textContent = `📄 ${formatElapsed(caterTimers[jobId].seconds)} | Building PDF...`;
+          }
+        }
+
+        try {
+          const resp = await fetch("/api/compile-resume-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              job_id: jobId,
+              job_title: resolvedTitle,
+              company: job ? job.company : "",
+              markdown: markdown
+            })
+          });
+
+          const data = await resp.json();
+
+          if (resp.status !== 200 || data.status !== "success" || !data.pdfBase64) {
+            throw new Error(data.message || "Failed to compile PDF from Google Apps Script.");
+          }
+
+          // Trigger PDF file download in browser
+          const byteChars = atob(data.pdfBase64);
+          const byteNums = new Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) {
+            byteNums[i] = byteChars.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNums);
+          const blob = new Blob([byteArray], { type: "application/pdf" });
+          const blobUrl = URL.createObjectURL(blob);
+
+          const dlLink = document.createElement("a");
+          dlLink.href = blobUrl;
+          const candidateName = (appState.config && appState.config.candidate_name) || "Candidate";
+          dlLink.download = data.filename || `Resume_${candidateName}_${resolvedTitle}.pdf`;
+          document.body.appendChild(dlLink);
+          dlLink.click();
+          document.body.removeChild(dlLink);
+          URL.revokeObjectURL(blobUrl);
+
+          const finalSec = caterTimers[jobId] ? caterTimers[jobId].seconds : 0;
+          if (caterTimers[jobId]) {
+            clearInterval(caterTimers[jobId].interval);
+            delete caterTimers[jobId];
+          }
+
+          if (job) job.resume_catered = 1;
+          const btn = document.getElementById(`caterBtn_${jobId}`);
+          if (btn) {
+            btn.disabled = false;
+            btn.style.borderColor = "var(--emerald)";
+            btn.style.color = "var(--emerald)";
+            btn.textContent = `✅ PDF Downloaded (${formatElapsed(finalSec)})`;
+          }
+
+        } catch (compileErr) {
+          if (caterTimers[jobId]) {
+            clearInterval(caterTimers[jobId].interval);
+            delete caterTimers[jobId];
+          }
+          const btn = document.getElementById(`caterBtn_${jobId}`);
+          if (btn) {
+            btn.disabled = false;
+            btn.style.borderColor = "#ef4444";
+            btn.style.color = "#ef4444";
+            btn.textContent = "❌ PDF Error";
+          }
+          alert(`PDF Compilation Failed:\n${compileErr.message}`);
+        }
+      }
+    });
 
     loadState();
   </script>

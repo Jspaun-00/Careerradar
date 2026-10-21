@@ -1,13 +1,16 @@
 import re
+import os
+import config_env
 
 DEFAULT_CONFIG = {
     "schedule_time": "10:00",
     "auto_open_browser": True,
     "scan_on_startup": False,
+    "candidate_name": os.getenv("CANDIDATE_NAME", "Candidate Name"),
     "lookback_hours": 24,  # Adjustable in UI: 24, 48, 72 (3d), 168 (7d), 336 (14d)
     "min_desired_salary": 130000,
     "include_remote_us": False,  # Default False so US-Remote jobs don't duplicate across every city hub!
-    "serper_api_key": "",
+    "serper_api_key": os.getenv("SERPER_API_KEY", ""),
     "enabled_tracks": [
         "Non-Tech / Business PM",
         "Process Improvement & Ops",
@@ -52,6 +55,8 @@ DEFAULT_CONFIG = {
         "cost optimization, and strategic roadmap execution. Background is business leadership and operational excellence (MBA in Business); "
         "does not hold an undergraduate technical/engineering degree (e.g. BS in Engineering, Computer Science, or STEM)."
     ),
+    "apps_script_webhook_url": os.getenv("APPS_SCRIPT_WEBHOOK_URL", "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_WEBHOOK_URL/exec"),
+    "gemini_gem_url": os.getenv("GEMINI_GEM_URL", "https://gemini.google.com/app"),
     "profiles": [
         {
             "id": "seattle_wa",

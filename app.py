@@ -1,3 +1,4 @@
+import os
 import time
 import webbrowser
 from datetime import datetime
@@ -6,11 +7,12 @@ from fastapi import FastAPI, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from database import init_db, get_config, save_config, upsert_jobs, list_jobs, update_job_status, save_meta, get_meta
+import config_env
+from database import init_db, get_config, save_config, upsert_jobs, list_jobs, update_job_status, save_meta, get_meta, update_resume_catered
 from scrapers import run_all_scrapers
 
 scheduler = AsyncIOScheduler()
-PORT = 8050
+PORT = int(os.getenv("PORT", 8050))
 
 async def execute_snapshot(trigger_source: str = "Scheduled 10:00 AM", profile_id: str = "ALL"):
     start = time.time()
@@ -160,6 +162,112 @@ OUTPUT INSTRUCTIONS:
         "prompt": prompt,
         "kb_snippet": kb_text[:300]
     }
+
+
+@app.post("/api/compile-resume-pdf")
+async def api_compile_resume_pdf(payload: dict = Body(...)):
+    """
+    Proxies requests from browser to Google Apps Script Web App
+    to avoid CORS issues with HTTP 302 redirects.
+    """
+    import re
+    import httpx
+    from fastapi.responses import JSONResponse
+
+    job_id = payload.get("job_id")
+    job_title = payload.get("job_title", "Program Manager").strip()
+    company = payload.get("company", "").strip()
+    markdown_text = payload.get("markdown", "").strip()
+    override_webhook_url = payload.get("webhook_url", "").strip()
+
+    DEFAULT_APPS_SCRIPT_WEBHOOK = os.getenv("APPS_SCRIPT_WEBHOOK_URL", "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_WEBHOOK_URL/exec")
+    cfg = get_config()
+    saved_url = cfg.get("apps_script_webhook_url", "").strip()
+    if not saved_url or "example.com" in saved_url or "YOUR_APPS_SCRIPT" in saved_url:
+        saved_url = DEFAULT_APPS_SCRIPT_WEBHOOK
+
+    webhook_url = override_webhook_url or saved_url or DEFAULT_APPS_SCRIPT_WEBHOOK
+
+    if not markdown_text:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "No markdown content provided."}
+        )
+
+    # Clean and tighten title for professional file naming
+    clean_title = re.sub(r'\s*[\(\[].*?[\)\]]', '', job_title)
+    clean_title = re.split(r'[,|/\-–—]', clean_title)[0].strip()
+    clean_title = re.sub(r'\s+(III|II|IV|I)\b', '', clean_title, flags=re.I)
+    clean_title = re.sub(r'\s+', ' ', clean_title).strip()
+
+    if company:
+        comp_clean = re.sub(r'(?i)\s+(Industries|LLC|Inc\.?|Corp\.?|Corporation)', '', company).strip()
+        if comp_clean and comp_clean.lower() not in clean_title.lower():
+            clean_title = f"{comp_clean} {clean_title}"
+
+    clean_title = re.sub(r'[^a-zA-Z0-9\s-]', '', clean_title).strip()
+    clean_title = re.sub(r'\s+', ' ', clean_title)
+    if not clean_title:
+        clean_title = "Program Manager"
+
+    candidate_name = cfg.get("candidate_name") or os.getenv("CANDIDATE_NAME", "Candidate")
+    out_filename = f"Resume_{candidate_name}_{clean_title}.pdf"
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=90.0) as client:
+            resp = await client.post(
+                webhook_url,
+                json={"markdown": markdown_text, "jobTitle": clean_title},
+                headers={"Content-Type": "application/json"}
+            )
+
+        if resp.status_code != 200:
+            return JSONResponse(
+                status_code=502,
+                content={
+                    "status": "error",
+                    "message": f"Google Apps Script returned status {resp.status_code}: {resp.text[:300]}"
+                }
+            )
+
+        try:
+            data = resp.json()
+        except Exception:
+            return JSONResponse(
+                status_code=502,
+                content={"status": "error", "message": f"Invalid JSON response from Apps Script: {resp.text[:300]}"}
+            )
+
+        if data.get("status") != "success" or not data.get("pdfBase64"):
+            err_msg = data.get("message") or data.get("error") or "Unknown error returned by Apps Script."
+            return JSONResponse(
+                status_code=502,
+                content={"status": "error", "message": f"Apps Script error: {err_msg}"}
+            )
+
+        # Mark job as catered in database
+        if job_id:
+            try:
+                update_resume_catered(str(job_id))
+            except Exception as db_err:
+                print(f"[Warning] Failed to update resume_catered for {job_id}: {db_err}")
+
+        return {
+            "status": "success",
+            "filename": out_filename,
+            "pdfBase64": data.get("pdfBase64")
+        }
+
+    except httpx.TimeoutException:
+        return JSONResponse(
+            status_code=504,
+            content={"status": "error", "message": "Request to Google Apps Script timed out after 90 seconds."}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": f"Failed to proxy PDF compilation: {str(e)}"}
+        )
 
 
 if __name__ == "__main__":

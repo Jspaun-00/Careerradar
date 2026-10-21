@@ -12,11 +12,11 @@ A high-performance, direct-source ATS aggregator and executive career intelligen
 
 ## 🖥️ Command Center & Multi-Hub Scanner Interface
 
-![Career Radar Command Center UI](../portfolio-assets/career_radar_ui.png)
+![Career Radar Command Center UI](assets/career_radar_ui.png)
 
 *The Career Radar v4 Executive Command Center: Live multi-hub metrics, category filter pills, direct ATS source badges, executive fit scoring, and 1-click Cater Resume companion triggers.*
 
-![Career Radar Multi-Hub Scanner Controls](../portfolio-assets/career_radar_scanner_controls.png)
+![Career Radar Multi-Hub Scanner Controls](assets/career_radar_scanner_controls.png)
 
 *The Multi-Hub Scanner & Track Control Engine: On-demand city hub triggers (All USA, Seattle, Denver, Austin), lookback sweep windows, and keyword inclusion/exclusion rules.*
 

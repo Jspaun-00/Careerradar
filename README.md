@@ -10,11 +10,15 @@ A high-performance, direct-source ATS aggregator and executive career intelligen
 
 ---
 
-## 🖥️ Command Center Interface
+## 🖥️ Command Center & Multi-Hub Scanner Interface
 
 ![Career Radar Command Center UI](../portfolio-assets/career_radar_ui.png)
 
 *The Career Radar v4 Executive Command Center: Live multi-hub metrics, category filter pills, direct ATS source badges, executive fit scoring, and 1-click Cater Resume companion triggers.*
+
+![Career Radar Multi-Hub Scanner Controls](../portfolio-assets/career_radar_scanner_controls.png)
+
+*The Multi-Hub Scanner & Track Control Engine: On-demand city hub triggers (All USA, Seattle, Denver, Austin), lookback sweep windows, and keyword inclusion/exclusion rules.*
 
 ---
 
@@ -161,3 +165,4 @@ python3 scrapers/run_all.py
 
 - **Fully Anonymized:** All private candidate credentials, API keys, and personal identifiers are loaded strictly via environment variables or git-ignored sidecars.
 - **Local Storage:** All ingested roles, historical matches, and application statuses stay on your machine.
+

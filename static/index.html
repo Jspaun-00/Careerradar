@@ -1036,6 +1036,16 @@
     });
 
     loadState();
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('panel') === 'settings') {
+      setTimeout(() => togglePanel('visualSettings'), 400);
+    }
+    if (urlParams.get('modal') === 'tailor') {
+      setTimeout(() => {
+        const firstJob = (window.allJobs && window.allJobs.length > 0) ? window.allJobs[0].dedup_key : null;
+        if (firstJob) openTailorModal(firstJob);
+      }, 500);
+    }
   </script>
 
   <!-- Gemini Resume Tailor Modal -->
